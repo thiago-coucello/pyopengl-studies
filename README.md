@@ -7,4 +7,4 @@ A simple repository for all the codes I wrote while studying PyOpenGL (whether u
     # conda install -c conda-forge freeglut
 ```
 
-**For the GLFWvariant the requirements.txt should cover**
+**For the GLFW variant the requirements.txt should cover**
