@@ -1,5 +1,5 @@
 from typing import Tuple
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
 import OpenGL.GLUT as glut

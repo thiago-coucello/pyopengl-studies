@@ -55,7 +55,7 @@ def load_tga_texture(filename: str):
 *************************/
 '''
 
-def writeText(x: float, y: float, text: str, clr: Color = (0, 0, 0, 1), font: int = GLUT_BITMAP_TIMES_ROMAN_24):
+def writeText(x: float, y: float, text: str, clr: Color = (0, 0, 0, 1), font: int = GLUT_BITMAP_TIMES_ROMAN_24): # type: ignore
     previousColors = getPreviousColor()
     color(clr[0], clr[1], clr[2], clr[3])
     glRasterPos2f(x, y)

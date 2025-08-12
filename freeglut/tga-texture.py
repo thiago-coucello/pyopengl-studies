@@ -142,7 +142,7 @@ def draw():
 
     glPushMatrix()
     glLoadIdentity()
-    writeText(-15, 25, "Aplicacao de Texturas com PyOpenGL", font=GLUT_BITMAP_TIMES_ROMAN_24)
+    writeText(-15, 25, "Aplicacao de Texturas com PyOpenGL", font=GLUT_BITMAP_TIMES_ROMAN_24) # type: ignore
     glPopMatrix()
 
     glPushMatrix()
