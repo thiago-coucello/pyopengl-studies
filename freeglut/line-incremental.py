@@ -101,6 +101,14 @@ def draw_grid():
     gl.glColor3f(0.5, 0.5, 0.5)  # cinza claro
     gl.glLineWidth(1)
 
+    gl.glPointSize(10)
+
+    gl.glBegin(gl.GL_POINTS)
+    for x in range(0, 16):
+        for y in range(0, 16):
+            gl.glVertex2i(x, y)
+    gl.glEnd()
+
     gl.glBegin(gl.GL_LINES)
     # Linhas verticais
     for x in range(0, 16):
@@ -119,8 +127,8 @@ def displayPoints():
 
     draw_grid()
 
-    gl.glColor3f(color[0]/255, color[1]/255, color[2]/255)   # Cor branca
-    gl.glPointSize(20)
+    gl.glPointSize(12)
+    gl.glColor3f(color[0]/255, color[1]/255, color[2]/255)
 
     if start is not None and end is not None:
         gl.glBegin(gl.GL_POINTS)
