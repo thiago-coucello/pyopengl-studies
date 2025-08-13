@@ -1,9 +1,17 @@
-from typing import Tuple
+from textwrap import fill
+from typing import Literal, Tuple
 #import matplotlib.pyplot as plt
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
-import OpenGL.GLUT as glut
+import OpenGL.GLUT as Glut
 import math
+import numpy as np
+from glut import writeText
+
+
+mode: Literal["line", "circle"] = "line"
+technique: Literal["implicit", "midpoint"] = "implicit"
+filled: bool = False
 
 Point = Tuple[int, int]
 Color = Tuple[int, int, int, int]
@@ -12,9 +20,66 @@ Y = 1
 start: Point | None = None
 end: Point | None = None
 
+orthoWidth = 25
+orthoHeight = 25
+
+gridStart = (1, 1)
+gridEnd = (16, 16)
+textColor: Color = (1, 1, 1, 1)  # Cor do texto
+textFont = Glut.GLUT_BITMAP_HELVETICA_12  # Fonte do texto # type: ignore
+
 def write_pixel(x: int, y: int, color: Color = (0, 0, 0, 1)):
     #plt.plot(x, y, marker='o', color=color)
+    r, g, b, a = color
+
+    if r > 1:
+        r /= 255
+    if g > 1:
+        g /= 255
+    if b > 1:
+        b /= 255
+        
+    gl.glColor4f(r, g, b, a)
     gl.glVertex2i(x, y)
+
+def draw_circle_point(x: int, y: int, cx: int, cy: int, color: Color = (1, 1, 0, 1)):
+    write_pixel(cx + x, cy + y, color)  # 2º octante
+    write_pixel(cx + y, cy + x, color)  # 1º octante
+    write_pixel(cx - y, cy + x, color)  # 8º octante
+    write_pixel(cx - x, cy + y, color)  # 7º octante
+    write_pixel(cx - x, cy - y, color)  # 6º octante
+    write_pixel(cx - y, cy - x, color)  # 5º octante
+    write_pixel(cx + y, cy - x, color)  # 4º octante
+    write_pixel(cx + x, cy - y, color)  # 3º octante
+
+def draw_circle(center: Point, radius: int, color: Color):
+    xo, yo = center
+
+    angles = np.linspace(45, 90, 1000, endpoint=False)
+
+    for angle in angles:
+        rad = math.radians(angle)
+        x = round(radius * math.cos(rad))
+        y = round(radius * math.sin(rad))
+        draw_circle_point(x, y, xo, yo, color)
+
+def midpoint_circle(center: Point, radius: int, color: Color):
+    center_x, center_y = center
+    d = 1 - radius
+    x, y = 0, radius
+    delta_x = lambda x: 2 * x + 3
+    delta_y = lambda x, y: 2 * (x - y) + 5
+
+    draw_circle_point(x, y, center_x, center_y, color)
+
+    while x < y:
+        if d < 0:
+            d += delta_x(x)
+        else:
+            d += delta_y(x, y)
+            y -= 1
+        x += 1
+        draw_circle_point(x, y, center_x, center_y, color)
 
 def midpoint_line(start: Point, end: Point, color: Color):
     x0, y0 = start[X], start[Y]
@@ -25,7 +90,7 @@ def midpoint_line(start: Point, end: Point, color: Color):
         start_y = min(y0, y1)
         end_y = max(y0, y1)
         for y in range(start_y, end_y + 1):
-            write_pixel(x0, y)
+            write_pixel(x0, y, color)
         return
     
     # Trata linhas horizontais
@@ -34,7 +99,7 @@ def midpoint_line(start: Point, end: Point, color: Color):
         start_x = min(x0, x1)
         end_x = max(x0, x1)
         for x in range(start_x, end_x + 1):
-            write_pixel(x, y0)
+            write_pixel(x, y0, color)
         return
 
     # Calcula as diferenças
@@ -54,7 +119,7 @@ def midpoint_line(start: Point, end: Point, color: Color):
         y = y0
         
         for x in range(x0, x1 + sx, sx):
-            write_pixel(x, y)
+            write_pixel(x, y, color)
             if d > 0:
                 y += sy
                 d -= 2*dx
@@ -65,7 +130,7 @@ def midpoint_line(start: Point, end: Point, color: Color):
         x = x0
         
         for y in range(y0, y1 + sy, sy):
-            write_pixel(x, y)
+            write_pixel(x, y, color)
             if d > 0:
                 x += sx
                 d -= 2*dy
@@ -104,37 +169,57 @@ def draw_grid():
     gl.glPointSize(10)
 
     gl.glBegin(gl.GL_POINTS)
-    for x in range(0, 16):
-        for y in range(0, 16):
+    for x in range(gridStart[X], gridEnd[X] + 1):
+        for y in range(gridStart[Y], gridEnd[Y] + 1):
             gl.glVertex2i(x, y)
     gl.glEnd()
 
     gl.glBegin(gl.GL_LINES)
     # Linhas verticais
-    for x in range(0, 16):
-        gl.glVertex2f(x, 0)
-        gl.glVertex2f(x, 15)
+    for x in range(gridStart[X], gridEnd[X] + 1):
+        gl.glVertex2f(x, gridStart[Y])
+        gl.glVertex2f(x, gridEnd[Y])
     # Linhas horizontais
-    for y in range(0, 16):
-        gl.glVertex2f(0, y)
-        gl.glVertex2f(15, y)
+    for y in range(gridStart[Y], gridEnd[Y] + 1):
+        gl.glVertex2f(gridStart[X], y)
+        gl.glVertex2f(gridEnd[X], y)
     gl.glEnd()
 
-def displayPoints():
-    color: Color = (0, 255, 0, 0) # RGBA
-
+def display():
     gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
     draw_grid()
 
     gl.glPointSize(12)
-    gl.glColor3f(color[0]/255, color[1]/255, color[2]/255)
+
+    writeText(1, 24, "Pressione 'c' para circulo, 'l' para linha", clr=textColor, font=textFont) # type: ignore
+    writeText(1, 23, "Pressione 'i' para implicita, 'm' para ponto medio", clr=textColor, font=textFont) # type: ignore
+    writeText(1, 22, "Pressione 'r' para reiniciar", clr=textColor, font=textFont) # type: ignore
+    writeText(1, 21, "Pressione ESC para sair", clr=textColor, font=textFont) # type: ignore
+    writeText(1, 18, f"Modo: {mode}, Tecnica: {technique}", clr=textColor, font=textFont) # type: ignore
 
     if start is not None and end is not None:
-        gl.glBegin(gl.GL_POINTS)
-        #draw_inc_line(start, end, color)
-        midpoint_line(start, end, color)
-        gl.glEnd()
+        if mode == "line":
+            gl.glBegin(gl.GL_POINTS)
+            if technique == "implicit":
+                draw_inc_line(start, end, color=(0, 1, 0, 1))
+            elif technique == "midpoint":
+                midpoint_line(start, end, color=(0, 1, 0, 1))
+            gl.glEnd()
+        elif mode == "circle":
+            radius = int(math.sqrt((end[X] - start[X])**2 + (end[Y] - start[Y])**2))
+            
+            if filled:
+                gl.glBegin(gl.GL_TRIANGLE_FAN)
+            else:
+                gl.glBegin(gl.GL_POINTS)
+            
+            if technique == "implicit":
+                draw_circle(start, radius, color=(1, 1, 0, 1))
+            elif technique == "midpoint":
+                midpoint_circle(start, radius, color=(1, 1, 0, 1))
+            
+            gl.glEnd()
 
         gl.glBegin(gl.GL_LINES)
         gl.glVertex2i(start[X], start[Y])
@@ -143,60 +228,70 @@ def displayPoints():
 
     if start is not None:
         gl.glBegin(gl.GL_POINTS)
-        gl.glColor4f(0, 0, 1, 1)
-        write_pixel(start[X], start[Y])
+        write_pixel(start[X], start[Y], color=(0, 0, 1, 1))
         gl.glEnd()
 
     if end is not None:
         gl.glBegin(gl.GL_POINTS)
-        gl.glColor4f(1, 0, 0, 1)
-        write_pixel(end[X], end[Y])
+        write_pixel(end[X], end[Y], color=(1, 0, 0, 1))
         gl.glEnd()
 
-    glut.glutSwapBuffers()
+    Glut.glutSwapBuffers()
 
 def mouse(button: int, state: int, x: int, y: int):
     global start, end
-    width = glut.glutGet(glut.GLUT_WINDOW_WIDTH)
-    height = glut.glutGet(glut.GLUT_WINDOW_HEIGHT)
+    width = Glut.glutGet(Glut.GLUT_WINDOW_WIDTH)
+    height = Glut.glutGet(Glut.GLUT_WINDOW_HEIGHT)
 
-    width = glut.glutGet(glut.GLUT_WINDOW_WIDTH)
-    height = glut.glutGet(glut.GLUT_WINDOW_HEIGHT)
-
-    print(f"Window size: width={width}, height={height}")
-    print(f"Raw mouse pos: x={x}, y={y}")
+    width = Glut.glutGet(Glut.GLUT_WINDOW_WIDTH)
+    height = Glut.glutGet(Glut.GLUT_WINDOW_HEIGHT)
 
     if width == 0 or height == 0:
         raise ValueError("Erro: largura ou altura da janela são zero.")
     
     y = height - y  # Corrige a coordenada Y
 
-    grid_x = (x / width) * 15
-    grid_y = (y / height) * 15
+    grid_x = (x / width) * orthoWidth
+    grid_y = (y / height) * orthoHeight
 
     grid_x, grid_y = round(grid_x), round(grid_y)
 
-    print(f"Button {'left' if button == glut.GLUT_LEFT_BUTTON else 'right'} was {'pressed' if state == glut.GLUT_DOWN else 'released'}")
-    if state == glut.GLUT_DOWN:
+    if state == Glut.GLUT_DOWN:
+        if grid_x < gridStart[X] or grid_x > gridEnd[X] or grid_y < gridStart[Y] or grid_y > gridEnd[Y]:
+            print(f"Coordenadas fora do grid: ({grid_x}, {grid_y})")
+            return
+        
         match button:
-            case glut.GLUT_LEFT_BUTTON:
+            case Glut.GLUT_LEFT_BUTTON:
                 start = (grid_x, grid_y)
-                print(f"New start point: {start}")
-            case glut.GLUT_RIGHT_BUTTON:
+            case Glut.GLUT_RIGHT_BUTTON:
                 end = (grid_x, grid_y)
-                print(f"New end point point: {end}")
-    glut.glutPostRedisplay()  
+    Glut.glutPostRedisplay()  
 
 
 def keyboard(key, x: int, y: int):
-    global start, end
+    global start, end, mode, technique, filled
+    key = key.lower()  # Normaliza a tecla para minúscula
     match key:
         case b'\x1b':
             # Encerra no ESC
-            glut.glutLeaveMainLoop()
+            Glut.glutLeaveMainLoop()
         case b'r':
             start = None
             end = None
+        case b'c':
+            mode = "circle"
+        case b'l':
+            mode = "line"
+        case b'm':
+            technique = "midpoint"
+        case b'i':
+            technique = "implicit"
+        case b'f':
+            filled = not filled
+        case _:
+            print(f"Tecla desconhecida: {key}")
+    Glut.glutPostRedisplay()
 
 
 def initScreen():
@@ -205,18 +300,20 @@ def initScreen():
     gl.glLoadIdentity()
 
     # Defining the coordinates system 
-    glu.gluOrtho2D(0, 15, 0, 15)
+    glu.gluOrtho2D(0, orthoWidth, 0, orthoHeight)
+    gl.glMatrixMode(gl.GL_MODELVIEW)
+    gl.glLoadIdentity()
 
 if __name__ == "__main__":
-    glut.glutInit()
-    glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGBA) # type: ignore
-    glut.glutInitWindowSize(500, 500)
-    glut.glutInitWindowPosition(100, 100)
-    glut.glutCreateWindow(b"Incremental Line Drawing - PyOpenGL")
+    Glut.glutInit()
+    Glut.glutInitDisplayMode(Glut.GLUT_DOUBLE | Glut.GLUT_RGBA) # type: ignore
+    Glut.glutInitWindowSize(800, 800)
+    Glut.glutInitWindowPosition(100, 100)
+    Glut.glutCreateWindow(b"implicit Line Drawing - PyOpenGL")
 
     initScreen()
-    glut.glutDisplayFunc(displayPoints)
-    glut.glutIdleFunc(displayPoints)
-    glut.glutKeyboardFunc(keyboard)
-    glut.glutMouseFunc(mouse)
-    glut.glutMainLoop()
+    Glut.glutDisplayFunc(display)
+    Glut.glutIdleFunc(display)
+    Glut.glutKeyboardFunc(keyboard)
+    Glut.glutMouseFunc(mouse)
+    Glut.glutMainLoop()
