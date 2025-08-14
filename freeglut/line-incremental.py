@@ -1,5 +1,5 @@
 from textwrap import fill
-from typing import Literal, Tuple
+from typing import Literal, NamedTuple, Tuple, List
 #import matplotlib.pyplot as plt
 import OpenGL.GL as gl
 import OpenGL.GLU as glu
@@ -20,6 +20,14 @@ Y = 1
 start: Point | None = None
 end: Point | None = None
 
+class Element(NamedTuple):
+    start: Point
+    end: Point
+    shape: Literal["line", "circle"]
+    technique: Literal["implicit", "midpoint"]
+
+elements: List[Element] = []
+
 orthoWidth = 25
 orthoHeight = 25
 
@@ -27,6 +35,15 @@ gridStart = (1, 1)
 gridEnd = (16, 16)
 textColor: Color = (1, 1, 1, 1)  # Cor do texto
 textFont = Glut.GLUT_BITMAP_HELVETICA_12  # Fonte do texto # type: ignore
+
+def add_element(start: Point, end: Point, shape: Literal["line", "circle"], technique: Literal["implicit", "midpoint"] = technique):
+    global elements
+    if start is None or end is None:
+        return
+    
+    new_element = Element(start=start, end=end, shape=shape, technique=technique)
+    if new_element not in elements:
+        elements.append(new_element)
 
 def write_pixel(x: int, y: int, color: Color = (0, 0, 0, 1)):
     #plt.plot(x, y, marker='o', color=color)
@@ -42,26 +59,36 @@ def write_pixel(x: int, y: int, color: Color = (0, 0, 0, 1)):
     gl.glColor4f(r, g, b, a)
     gl.glVertex2i(x, y)
 
-def draw_circle_point(x: int, y: int, cx: int, cy: int, color: Color = (1, 1, 0, 1)):
-    write_pixel(cx + x, cy + y, color)  # 2º octante
-    write_pixel(cx + y, cy + x, color)  # 1º octante
-    write_pixel(cx - y, cy + x, color)  # 8º octante
-    write_pixel(cx - x, cy + y, color)  # 7º octante
-    write_pixel(cx - x, cy - y, color)  # 6º octante
-    write_pixel(cx - y, cy - x, color)  # 5º octante
-    write_pixel(cx + y, cy - x, color)  # 4º octante
-    write_pixel(cx + x, cy - y, color)  # 3º octante
+def circle_point_symmetry(x: int, y: int, cx: int, cy: int, color: Color = (1, 1, 0, 1)):
+    return [
+        (cx + x, cy + y),  # 2º octante
+        (cx + y, cy + x),  # 1º octante
+        (cx - y, cy + x),  # 8º octante
+        (cx - x, cy + y),  # 7º octante
+        (cx - x, cy - y),  # 6º octante
+        (cx - y, cy - x),  # 5º octante
+        (cx + y, cy - x),  # 4º octante
+        (cx + x, cy - y),  # 3º octante
+    ]
 
 def draw_circle(center: Point, radius: int, color: Color):
     xo, yo = center
 
     angles = np.linspace(45, 90, 1000, endpoint=False)
-
+    points = []
     for angle in angles:
         rad = math.radians(angle)
         x = round(radius * math.cos(rad))
         y = round(radius * math.sin(rad))
-        draw_circle_point(x, y, xo, yo, color)
+        points.extend(circle_point_symmetry(x, y, xo, yo, color))
+    
+     # Remover duplicatas e ordenar
+    points = list(set(points))  # evita repetição
+    points.sort(key=lambda p: math.atan2(p[1] - yo, p[0] - xo))  # ordena pelo ângulo
+
+    # Desenhar em ordem
+    for px, py in points:
+        write_pixel(px, py, color)
 
 def midpoint_circle(center: Point, radius: int, color: Color):
     center_x, center_y = center
@@ -70,7 +97,8 @@ def midpoint_circle(center: Point, radius: int, color: Color):
     delta_x = lambda x: 2 * x + 3
     delta_y = lambda x, y: 2 * (x - y) + 5
 
-    draw_circle_point(x, y, center_x, center_y, color)
+    points = []
+    points.extend(circle_point_symmetry(x, y, center_x, center_y, color))
 
     while x < y:
         if d < 0:
@@ -79,7 +107,15 @@ def midpoint_circle(center: Point, radius: int, color: Color):
             d += delta_y(x, y)
             y -= 1
         x += 1
-        draw_circle_point(x, y, center_x, center_y, color)
+        points.extend(circle_point_symmetry(x, y, center_x, center_y, color))
+
+    # Remover duplicatas e ordenar
+    points = list(set(points))  # evita repetição
+    points.sort(key=lambda p: math.atan2(p[1] - center_y, p[0] - center_x))  # ordena pelo ângulo
+
+    # Desenhar em ordem
+    for px, py in points:
+        write_pixel(px, py, color)
 
 def midpoint_line(start: Point, end: Point, color: Color):
     x0, y0 = start[X], start[Y]
@@ -185,6 +221,29 @@ def draw_grid():
         gl.glVertex2f(gridEnd[X], y)
     gl.glEnd()
 
+def draw_shape(start: Point, end: Point, mode: Literal["line", "circle"]):
+    if mode == "line":
+            gl.glBegin(gl.GL_POINTS)
+            if technique == "implicit":
+                draw_inc_line(start, end, color=(0, 1, 0, 1))
+            elif technique == "midpoint":
+                midpoint_line(start, end, color=(0, 1, 0, 1))
+            gl.glEnd()
+    elif mode == "circle":
+        radius = int(math.sqrt((end[X] - start[X])**2 + (end[Y] - start[Y])**2))
+        
+        if filled:
+            gl.glBegin(gl.GL_TRIANGLE_FAN)
+        else:
+            gl.glBegin(gl.GL_POINTS)
+        
+        if technique == "implicit":
+            draw_circle(start, radius, color=(1, 1, 0, 1))
+        elif technique == "midpoint":
+            midpoint_circle(start, radius, color=(1, 1, 0, 1))
+        
+        gl.glEnd()
+
 def display():
     gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
@@ -199,27 +258,7 @@ def display():
     writeText(1, 18, f"Modo: {mode}, Tecnica: {technique}", clr=textColor, font=textFont) # type: ignore
 
     if start is not None and end is not None:
-        if mode == "line":
-            gl.glBegin(gl.GL_POINTS)
-            if technique == "implicit":
-                draw_inc_line(start, end, color=(0, 1, 0, 1))
-            elif technique == "midpoint":
-                midpoint_line(start, end, color=(0, 1, 0, 1))
-            gl.glEnd()
-        elif mode == "circle":
-            radius = int(math.sqrt((end[X] - start[X])**2 + (end[Y] - start[Y])**2))
-            
-            if filled:
-                gl.glBegin(gl.GL_TRIANGLE_FAN)
-            else:
-                gl.glBegin(gl.GL_POINTS)
-            
-            if technique == "implicit":
-                draw_circle(start, radius, color=(1, 1, 0, 1))
-            elif technique == "midpoint":
-                midpoint_circle(start, radius, color=(1, 1, 0, 1))
-            
-            gl.glEnd()
+        draw_shape(start, end, mode)
 
         gl.glBegin(gl.GL_LINES)
         gl.glVertex2i(start[X], start[Y])
@@ -235,6 +274,10 @@ def display():
         gl.glBegin(gl.GL_POINTS)
         write_pixel(end[X], end[Y], color=(1, 0, 0, 1))
         gl.glEnd()
+
+    if len(elements) > 0:
+        for element in elements:
+            draw_shape(element.start, element.end, element.shape)
 
     Glut.glutSwapBuffers()
 
@@ -279,6 +322,8 @@ def keyboard(key, x: int, y: int):
         case b'r':
             start = None
             end = None
+            elements.clear()
+            print("Reiniciando...")
         case b'c':
             mode = "circle"
         case b'l':
@@ -289,6 +334,10 @@ def keyboard(key, x: int, y: int):
             technique = "implicit"
         case b'f':
             filled = not filled
+        case b'a':
+            if start is not None and end is not None:
+                add_element(start, end, mode, technique)
+                print(f"Elemento adicionado: {start} -> {end} como {mode}")
         case _:
             print(f"Tecla desconhecida: {key}")
     Glut.glutPostRedisplay()
