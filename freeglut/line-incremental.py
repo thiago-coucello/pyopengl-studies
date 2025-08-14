@@ -25,6 +25,7 @@ class Element(NamedTuple):
     end: Point
     shape: Literal["line", "circle"]
     technique: Literal["implicit", "midpoint"]
+    filled: bool
 
 elements: List[Element] = []
 
@@ -36,12 +37,12 @@ gridEnd = (16, 16)
 textColor: Color = (1, 1, 1, 1)  # Cor do texto
 textFont = Glut.GLUT_BITMAP_HELVETICA_12  # Fonte do texto # type: ignore
 
-def add_element(start: Point, end: Point, shape: Literal["line", "circle"], technique: Literal["implicit", "midpoint"] = technique):
+def add_element(start: Point, end: Point, shape: Literal["line", "circle"], technique: Literal["implicit", "midpoint"] = technique, filled: bool = filled):
     global elements
     if start is None or end is None:
         return
     
-    new_element = Element(start=start, end=end, shape=shape, technique=technique)
+    new_element = Element(start, end, shape, technique, filled)
     if new_element not in elements:
         elements.append(new_element)
 
@@ -221,7 +222,7 @@ def draw_grid():
         gl.glVertex2f(gridEnd[X], y)
     gl.glEnd()
 
-def draw_shape(start: Point, end: Point, mode: Literal["line", "circle"]):
+def draw_shape(start: Point, end: Point, mode: Literal["line", "circle"], technique: Literal["implicit", "midpoint"], filled: bool):
     if mode == "line":
             gl.glBegin(gl.GL_POINTS)
             if technique == "implicit":
@@ -258,7 +259,7 @@ def display():
     writeText(1, 18, f"Modo: {mode}, Tecnica: {technique}", clr=textColor, font=textFont) # type: ignore
 
     if start is not None and end is not None:
-        draw_shape(start, end, mode)
+        draw_shape(start, end, mode, technique=technique, filled=filled)
 
         gl.glBegin(gl.GL_LINES)
         gl.glVertex2i(start[X], start[Y])
@@ -277,7 +278,7 @@ def display():
 
     if len(elements) > 0:
         for element in elements:
-            draw_shape(element.start, element.end, element.shape)
+            draw_shape(element.start, element.end, element.shape, element.technique, element.filled)
 
     Glut.glutSwapBuffers()
 
@@ -301,7 +302,8 @@ def mouse(button: int, state: int, x: int, y: int):
 
     if state == Glut.GLUT_DOWN:
         if grid_x < gridStart[X] or grid_x > gridEnd[X] or grid_y < gridStart[Y] or grid_y > gridEnd[Y]:
-            print(f"Coordenadas fora do grid: ({grid_x}, {grid_y})")
+            start = None
+            end = None
             return
         
         match button:
@@ -336,7 +338,7 @@ def keyboard(key, x: int, y: int):
             filled = not filled
         case b'a':
             if start is not None and end is not None:
-                add_element(start, end, mode, technique)
+                add_element(start, end, mode, technique, filled)
                 print(f"Elemento adicionado: {start} -> {end} como {mode}")
         case _:
             print(f"Tecla desconhecida: {key}")
