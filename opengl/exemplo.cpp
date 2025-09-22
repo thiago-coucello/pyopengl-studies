@@ -8,6 +8,7 @@ float angleZ = 0.0f;
 void display() {
     glClear(GL_COLOR_BUFFER_BIT);   // Limpando o buffer de cor
 
+    glTranslatef(0.0f, 0.0f, -5.0f); // Movendo a cena para trás no eixo Z
     glBegin(GL_TRIANGLES);  // Definindo o início do desenho de um triângulo
         glColor3f(1.0f, 0.0f, 0.0f); // Definindo cor vermelha (R, G, B)
         glVertex2f(-0.5f, -0.5f);    // Primeiro vértice do triângulo (esquerda)
@@ -68,8 +69,9 @@ int main(int argc, char** argv) {
     // Alterações na matriz de projeção da janela
     glMatrixMode(GL_PROJECTION); // Definindo o modo de matriz para projeção
     glLoadIdentity(); // Carregando a matriz identidade
-    gluOrtho2D(-1.0, 1.0, -1.0, 1.0); // Definindo a projeção ortográfica
+    //gluOrtho2D(-1.0, 1.0, -1.0, 1.0); // Definindo a projeção ortográfica
     //glFrustum(-1.0, 1.0, -1.0, 1.0, 1.0, 10.0); // Definindo a projeção em perspectiva
+    gluPerspective(45.0, 1.0, 1.0, 10.0); // Definindo a projeção em perspectiva
 
     // Alterações na matriz de modelo
     glMatrixMode(GL_MODELVIEW); // Definindo o modo de matriz para modelo

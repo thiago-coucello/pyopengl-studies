@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/thiago/cg/opengl/build",
+  "command": "/usr/bin/g++   -g -std=gnu++11 -o CMakeFiles/main.dir/main.cpp.o -c /home/thiago/cg/opengl/main.cpp",
+  "file": "/home/thiago/cg/opengl/main.cpp",
+  "output": "CMakeFiles/main.dir/main.cpp.o"
+}
+]
