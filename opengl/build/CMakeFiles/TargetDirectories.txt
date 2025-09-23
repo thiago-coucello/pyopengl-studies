@@ -1,3 +1,0 @@
-/home/thiago/cg/opengl/build/CMakeFiles/main.dir
-/home/thiago/cg/opengl/build/CMakeFiles/edit_cache.dir
-/home/thiago/cg/opengl/build/CMakeFiles/rebuild_cache.dir

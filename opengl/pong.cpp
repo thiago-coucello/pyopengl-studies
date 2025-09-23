@@ -58,7 +58,7 @@ void drawGrid() {
     glEnd();
 }
 
-void drawBall(Element element) {
+void drawFood(Element element) {
     glPushMatrix();
         glColor3f(1.0f, 1.0f, 1.0f); // Cor branca para a bola
         glBegin(GL_QUADS);
@@ -95,7 +95,7 @@ void display() {
     
      // --- IGNORE ---
 
-    drawBall(ball); // Desenha a bola
+    drawFood(ball); // Desenha a bola
     drawBar(bar1);
     drawBar(bar2);
     glFlush();  // Atualiza a tela
